@@ -6,8 +6,8 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 def export_gdb_info_to_excel(gdb_path, output_file_path):
     """
-    Walks through an ESRI geodatabase, collects the feature class names, dataset names (if applicable), and feature counts,
-    and exports the information to an Excel file.
+    Walks through an ESRI geodatabase, collects the feature class names, dataset names (if applicable), feature counts,
+    and table names, and exports the information to an Excel file.
 
     Args:
         gdb_path (str): The path to the ESRI geodatabase.
@@ -30,7 +30,19 @@ def export_gdb_info_to_excel(gdb_path, output_file_path):
             feature_info.append({
                 "Dataset Name": dataset,
                 "Feature Class Name": feature_class,
-                "Feature Count": feature_count
+                "Feature Count": feature_count,
+                "Object Type": "Feature Class"
+            })
+
+        # Get the list of tables in the dataset
+        tables = arcpy.ListTables()
+        for table in tables:
+            row_count = int(arcpy.GetCount_management(table).getOutput(0))
+            feature_info.append({
+                "Dataset Name": dataset,
+                "Feature Class Name": table,
+                "Feature Count": row_count,
+                "Object Type": "Table"
             })
 
     # Get the list of feature classes not in a dataset
@@ -43,7 +55,21 @@ def export_gdb_info_to_excel(gdb_path, output_file_path):
         feature_info.append({
             "Dataset Name": "N/A",
             "Feature Class Name": feature_class,
-            "Feature Count": feature_count
+            "Feature Count": feature_count,
+            "Object Type": "Feature Class"
+        })
+
+    # Get the list of standalone tables
+    standalone_tables = arcpy.ListTables()
+
+    # Add the standalone tables to the feature_info list
+    for table in standalone_tables:
+        row_count = int(arcpy.GetCount_management(table).getOutput(0))
+        feature_info.append({
+            "Dataset Name": "N/A",
+            "Feature Class Name": table,
+            "Feature Count": row_count,
+            "Object Type": "Table"
         })
 
     # Create the Excel workbook and worksheet
@@ -56,6 +82,7 @@ def export_gdb_info_to_excel(gdb_path, output_file_path):
     worksheet["A1"] = "Dataset Name"
     worksheet["B1"] = "Feature Class Name"
     worksheet["C1"] = "Feature Count"
+    worksheet["D1"] = "Object Type"
 
     # Write the feature information to the worksheet
     for row in dataframe_to_rows(df, index=False, header=False):
@@ -65,4 +92,4 @@ def export_gdb_info_to_excel(gdb_path, output_file_path):
     print(f"Excel file saved at: {output_file_path}")
 
 # Example usage
-export_gdb_info_to_excel(gdb_path=r"D:\Work\testtt.gdb", output_file_path="D:/output_file.xlsx")
+export_gdb_info_to_excel(gdb_path="D:\\GIS_Data\\mydatabase.gdb", output_file_path="D:/output_file.xlsx")
