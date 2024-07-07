@@ -2,6 +2,5 @@ map = arcpy.mp.ArcGISProject("CURRENT").listMaps()[0]
 
 layer = map.listLayers()
 for i in layer:
-    
     result = arcpy.management.GetCount(i)
     print('{} has {} records'.format(i, result[0]))
