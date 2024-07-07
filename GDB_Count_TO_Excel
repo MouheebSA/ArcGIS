@@ -1,0 +1,68 @@
+import os
+import arcpy
+import openpyxl
+import pandas as pd
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+def export_gdb_info_to_excel(gdb_path, output_file_path):
+    """
+    Walks through an ESRI geodatabase, collects the feature class names, dataset names (if applicable), and feature counts,
+    and exports the information to an Excel file.
+
+    Args:
+        gdb_path (str): The path to the ESRI geodatabase.
+        output_file_path (str): The path to the output Excel file.
+    """
+    feature_info = []
+
+    # Open the geodatabase
+    arcpy.env.workspace = gdb_path
+
+    # Get the list of datasets in the geodatabase
+    datasets = arcpy.ListDatasets()
+
+    # Loop through the datasets and feature classes
+    for dataset in datasets:
+        arcpy.env.workspace = os.path.join(gdb_path, dataset)
+        feature_classes = arcpy.ListFeatureClasses()
+        for feature_class in feature_classes:
+            feature_count = int(arcpy.GetCount_management(feature_class).getOutput(0))
+            feature_info.append({
+                "Dataset Name": dataset,
+                "Feature Class Name": feature_class,
+                "Feature Count": feature_count
+            })
+
+    # Get the list of feature classes not in a dataset
+    arcpy.env.workspace = gdb_path
+    standalone_feature_classes = arcpy.ListFeatureClasses()
+
+    # Add the standalone feature classes to the feature_info list
+    for feature_class in standalone_feature_classes:
+        feature_count = int(arcpy.GetCount_management(feature_class).getOutput(0))
+        feature_info.append({
+            "Dataset Name": "N/A",
+            "Feature Class Name": feature_class,
+            "Feature Count": feature_count
+        })
+
+    # Create the Excel workbook and worksheet
+    df = pd.DataFrame(feature_info)
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "GDB Information"
+
+    # Write the header row
+    worksheet["A1"] = "Dataset Name"
+    worksheet["B1"] = "Feature Class Name"
+    worksheet["C1"] = "Feature Count"
+
+    # Write the feature information to the worksheet
+    for row in dataframe_to_rows(df, index=False, header=False):
+        worksheet.append(row)
+
+    workbook.save(output_file_path)
+    print(f"Excel file saved at: {output_file_path}")
+
+# Example usage
+export_gdb_info_to_excel(gdb_path=r"D:\Work\testtt.gdb", output_file_path="D:/output_file.xlsx")
