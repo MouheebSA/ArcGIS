@@ -1,0 +1,113 @@
+import os
+import arcpy
+import openpyxl
+import pandas as pd
+from openpyxl.utils.dataframe import dataframe_to_rows
+from datetime import datetime
+import time
+
+def export_sde_info_to_excel(sde_connection_file, output_file_path):
+    """
+    Connects to an SDE database, collects the feature class names, dataset names (if applicable), feature counts,
+    geometry types, and operation date, and exports the information to an Excel file.
+
+    Args:
+        sde_connection_file (str): The path to the SDE connection file.
+        output_file_path (str): The path to the output Excel file.
+    """
+    feature_info = []
+
+    # Start the timer
+    start_time = time.time()
+
+    # Connect to the SDE database
+    arcpy.env.workspace = sde_connection_file
+
+    # Get the list of datasets in the SDE database
+    datasets = arcpy.ListDatasets()
+
+    # Loop through the datasets and feature classes
+    for dataset in datasets:
+        arcpy.env.workspace = os.path.join(sde_connection_file, dataset)
+        feature_classes = arcpy.ListFeatureClasses()
+        for feature_class in feature_classes:
+            feature_count = int(arcpy.GetCount_management(feature_class).getOutput(0))
+            desc = arcpy.Describe(feature_class)
+            geometry_type = desc.shapeType
+            operation_date = datetime.now().strftime('%Y-%m-%d')
+            feature_info.append({
+                "Dataset Name": dataset,
+                "Feature Class Name": feature_class,
+                "Feature Count": feature_count,
+                "Geometry Type": geometry_type,
+                "Object Type": "Feature Class",
+                "Operation Date": operation_date
+            })
+
+        
+    # Get the list of feature classes not in a dataset
+    arcpy.env.workspace = sde_connection_file
+    standalone_feature_classes = arcpy.ListFeatureClasses()
+
+    # Add the standalone feature classes to the feature_info list
+    for feature_class in standalone_feature_classes:
+        feature_count = int(arcpy.GetCount_management(feature_class).getOutput(0))
+        desc = arcpy.Describe(feature_class)
+        geometry_type = desc.shapeType
+        operation_date = datetime.now().strftime('%Y-%m-%d')
+        feature_info.append({
+            "Dataset Name": "N/A",
+            "Feature Class Name": feature_class,
+            "Feature Count": feature_count,
+            "Geometry Type": geometry_type,
+            "Object Type": "Feature Class",
+            "Operation Date": operation_date
+        })
+
+    # Get the list of standalone tables
+    standalone_tables = arcpy.ListTables()
+
+    # Add the standalone tables to the feature_info list
+    for table in standalone_tables:
+        row_count = int(arcpy.GetCount_management(table).getOutput(0))
+        operation_date = datetime.now().strftime('%Y-%m-%d')
+        feature_info.append({
+            "Dataset Name": "N/A",
+            "Feature Class Name": table,
+            "Feature Count": row_count,
+            "Geometry Type": "N/A",
+            "Object Type": "Table",
+            "Operation Date": operation_date
+        })
+
+    # Create the Excel workbook and worksheet
+    df = pd.DataFrame(feature_info)
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "SDE Information"
+
+    # Write the header row
+    worksheet["A1"] = "Dataset Name"
+    worksheet["B1"] = "Feature Class Name"
+    worksheet["C1"] = "Feature Count"
+    worksheet["D1"] = "Geometry Type"
+    worksheet["E1"] = "Object Type"
+    worksheet["F1"] = "Operation Date"
+
+    # Write the feature information to the worksheet
+    for row in dataframe_to_rows(df, index=False, header=False):
+        worksheet.append(row)
+
+    workbook.save(output_file_path)
+    print(f"Excel file saved at: {output_file_path}")
+
+    # Calculate the execution time
+    end_time = time.time()
+    execution_time = end_time - start_time
+    hours = int(execution_time // 3600)
+    minutes = int((execution_time % 3600) // 60)
+    seconds = int(execution_time % 60)
+    print(f"Code execution time: {hours:02d}:{minutes:02d}:{seconds:02d}")
+
+# Example usage
+export_sde_info_to_excel(sde_connection_file=r"C:\Users\mmsaadallah\AppData\Roaming\Esri\ArcGISPro\Favorites\SDIPROD_FME.sde", output_file_path=r"D:/output_file.xlsx")
