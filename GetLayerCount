@@ -1,0 +1,16 @@
+import arcpy
+
+# Specify the name of the layer in ArcGIS Pro
+layer_name = "حدود قطع الأراضي"
+
+# Get the map from the active project
+map = arcpy.mp.ArcGISProject("CURRENT").listMaps()[0]
+
+# Get the layer object from the map
+layer = map.listLayers(layer_name)[0]
+
+# Get the feature count
+result = arcpy.management.GetCount(layer)
+
+# Print the number of features using the Result object
+print('{} has {} records'.format(layer_name, result[0]))
